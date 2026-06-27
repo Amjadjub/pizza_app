@@ -91,3 +91,18 @@ button:hover {
   font-size: 14px;
   color: #666;
 }
+
+input {
+  margin-left: 8px;
+  padding: 6px;
+  width: 260px;
+}
+
+button:disabled {
+  background: #777;
+  cursor: not-allowed;
+}
+
+.success {
+  border-color: #222;
+}

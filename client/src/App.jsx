@@ -13,6 +13,14 @@ function App() {
 
   const [cart, setCart] = useState([]);
 
+  const [customerName, setCustomerName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+
+  const [checkoutError, setCheckoutError] = useState("");
+  const [orderConfirmation, setOrderConfirmation] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/menu`)
       .then((response) => {
@@ -89,10 +97,65 @@ function App() {
     setCart([...cart, newItem]);
     setSelectedToppingIds([]);
     setError("");
+    setOrderConfirmation(null);
   }
 
   function removeFromCart(itemId) {
     setCart(cart.filter((item) => item.id !== itemId));
+  }
+
+  async function handleCheckout() {
+    setCheckoutError("");
+    setOrderConfirmation(null);
+
+    if (cart.length === 0) {
+      setCheckoutError("Cart is empty");
+      return;
+    }
+
+    if (!customerName || !phone || !deliveryAddress) {
+      setCheckoutError("Customer name, phone and delivery address are required");
+      return;
+    }
+
+    const orderBody = {
+      customerName,
+      phone,
+      deliveryAddress,
+      pizzas: cart.map((item) => ({
+        pizzaId: item.pizzaId,
+        sizeId: item.sizeId,
+        toppingIds: item.toppingIds
+      }))
+    };
+
+    try {
+      setIsSubmitting(true);
+
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(orderBody)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create order");
+      }
+
+      setOrderConfirmation(data);
+      setCart([]);
+      setCustomerName("");
+      setPhone("");
+      setDeliveryAddress("");
+    } catch (err) {
+      setCheckoutError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (error && !menu) {
@@ -243,6 +306,57 @@ function App() {
           the server.
         </p>
       </section>
+
+      <section className="panel">
+        <h2>Customer Details</h2>
+
+        <label>
+          Customer Name:
+          <input
+            type="text"
+            value={customerName}
+            onChange={(event) => setCustomerName(event.target.value)}
+          />
+        </label>
+
+        <label>
+          Phone:
+          <input
+            type="text"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+          />
+        </label>
+
+        <label>
+          Delivery Address:
+          <input
+            type="text"
+            value={deliveryAddress}
+            onChange={(event) => setDeliveryAddress(event.target.value)}
+          />
+        </label>
+
+        {checkoutError && <p className="error">{checkoutError}</p>}
+
+        <button
+          data-testid="checkout-button"
+          onClick={handleCheckout}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Processing..." : "Fake Payment and Submit Order"}
+        </button>
+      </section>
+
+      {orderConfirmation && (
+        <section data-testid="order-confirmation" className="panel success">
+          <h2>Order Confirmation</h2>
+          <p>Order number: {orderConfirmation.id}</p>
+          <p>Status: {orderConfirmation.status}</p>
+          <p>Payment status: {orderConfirmation.paymentStatus}</p>
+          <p>Final price from server: ₪{orderConfirmation.totalPrice}</p>
+        </section>
+      )}
     </main>
   );
 }
