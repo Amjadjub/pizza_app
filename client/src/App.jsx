@@ -21,6 +21,10 @@ function App() {
   const [orderConfirmation, setOrderConfirmation] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [trackingOrderId, setTrackingOrderId] = useState("");
+  const [trackedOrder, setTrackedOrder] = useState(null);
+  const [trackingError, setTrackingError] = useState("");
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/menu`)
       .then((response) => {
@@ -157,6 +161,32 @@ function App() {
       setIsSubmitting(false);
     }
   }
+
+  async function handleTrackOrder() {
+  setTrackingError("");
+  setTrackedOrder(null);
+
+  if (!trackingOrderId) {
+    setTrackingError("Please enter an order number");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/orders/${trackingOrderId}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Order not found");
+    }
+
+    setTrackedOrder(data);
+  } catch (err) {
+    setTrackingError(err.message);
+  }
+}
 
   if (error && !menu) {
     return (
@@ -357,6 +387,31 @@ function App() {
           <p>Final price from server: ₪{orderConfirmation.totalPrice}</p>
         </section>
       )}
+      <section className="panel">
+  <h2>Track Order Status</h2>
+
+  <label>
+    Order Number:
+    <input
+      type="text"
+      value={trackingOrderId}
+      onChange={(event) => setTrackingOrderId(event.target.value)}
+    />
+  </label>
+
+  <button onClick={handleTrackOrder}>Check Status</button>
+
+  {trackingError && <p className="error">{trackingError}</p>}
+
+  {trackedOrder && (
+    <div className="status-box">
+      <p>Order number: {trackedOrder.id}</p>
+      <p>Status: {trackedOrder.status}</p>
+      <p>Customer: {trackedOrder.customerName}</p>
+      <p>Total price: ₪{trackedOrder.totalPrice}</p>
+    </div>
+  )}
+</section>
     </main>
   );
 }
