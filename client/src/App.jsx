@@ -25,6 +25,10 @@ function App() {
   const [trackedOrder, setTrackedOrder] = useState(null);
   const [trackingError, setTrackingError] = useState("");
 
+  const [employeeOrders, setEmployeeOrders] = useState([]);
+  const [deliveryOrders, setDeliveryOrders] = useState([]);
+  const [staffError, setStaffError] = useState("");
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/menu`)
       .then((response) => {
@@ -155,6 +159,7 @@ function App() {
       setCustomerName("");
       setPhone("");
       setDeliveryAddress("");
+      await loadEmployeeOrders();
     } catch (err) {
       setCheckoutError(err.message);
     } finally {
@@ -188,6 +193,88 @@ function App() {
   }
 }
 
+  function formatOrderItems(order) {
+  return order.pizzas
+    .map((item) => {
+      const toppingNames = item.toppings.length === 0
+        ? "No toppings"
+        : item.toppings.map((topping) => topping.name).join(", ");
+
+      return `${item.pizza.name} / ${item.size.name} / ${toppingNames}`;
+    })
+    .join(" | ");
+}
+
+async function loadEmployeeOrders() {
+  setStaffError("");
+
+  try {
+    const [newResponse, preparingResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/orders?status=new`),
+      fetch(`${API_BASE_URL}/api/orders?status=preparing`)
+    ]);
+
+    const newOrders = await newResponse.json();
+    const preparingOrders = await preparingResponse.json();
+
+    if (!newResponse.ok || !preparingResponse.ok) {
+      throw new Error("Failed to load employee orders");
+    }
+
+    setEmployeeOrders([...newOrders, ...preparingOrders]);
+  } catch (err) {
+    setStaffError(err.message);
+  }
+}
+
+async function loadDeliveryOrders() {
+  setStaffError("");
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/orders?status=ready`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to load delivery orders");
+    }
+
+    setDeliveryOrders(data);
+  } catch (err) {
+    setStaffError(err.message);
+  }
+}
+
+async function updateOrderStatus(orderId, newStatus) {
+  setStaffError("");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/orders/${orderId}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: newStatus })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to update order status");
+    }
+
+    await loadEmployeeOrders();
+    await loadDeliveryOrders();
+
+    if (trackedOrder && trackedOrder.id === orderId) {
+      setTrackedOrder(data);
+    }
+  } catch (err) {
+    setStaffError(err.message);
+  }
+}
   if (error && !menu) {
     return (
       <main className="app">
@@ -410,6 +497,78 @@ function App() {
       <p>Customer: {trackedOrder.customerName}</p>
       <p>Total price: ₪{trackedOrder.totalPrice}</p>
     </div>
+  )}
+</section>
+
+    <section data-testid="employee-orders" className="panel">
+  <h2>Restaurant Employee Orders</h2>
+
+  <button onClick={loadEmployeeOrders}>Refresh Employee Orders</button>
+
+  {staffError && <p className="error">{staffError}</p>}
+
+  {employeeOrders.length === 0 ? (
+    <p>No active employee orders</p>
+  ) : (
+    <ul>
+      {employeeOrders.map((order) => (
+        <li key={order.id} className="cart-item">
+          <strong>Order #{order.id}</strong>
+          <br />
+          Customer: {order.customerName}
+          <br />
+          Items: {formatOrderItems(order)}
+          <br />
+          Price: ₪{order.totalPrice}
+          <br />
+          Status: {order.status}
+          <br />
+
+          {order.status === "new" && (
+            <button onClick={() => updateOrderStatus(order.id, "preparing")}>
+              Mark as Preparing
+            </button>
+          )}
+
+          {order.status === "preparing" && (
+            <button onClick={() => updateOrderStatus(order.id, "ready")}>
+              Mark as Ready
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  )}
+</section>
+
+<section data-testid="delivery-orders" className="panel">
+  <h2>Delivery Orders</h2>
+
+  <button onClick={loadDeliveryOrders}>Refresh Delivery Orders</button>
+
+  {deliveryOrders.length === 0 ? (
+    <p>No orders ready for delivery</p>
+  ) : (
+    <ul>
+      {deliveryOrders.map((order) => (
+        <li key={order.id} className="cart-item">
+          <strong>Order #{order.id}</strong>
+          <br />
+          Customer: {order.customerName}
+          <br />
+          Phone: {order.phone}
+          <br />
+          Address: {order.deliveryAddress}
+          <br />
+          Status: {order.status}
+          <br />
+
+          <button onClick={() => updateOrderStatus(order.id, "delivered")}>
+            Mark as Delivered
+          </button>
+        </li>
+      ))}
+    </ul>
   )}
 </section>
     </main>
