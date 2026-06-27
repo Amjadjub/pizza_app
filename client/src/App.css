@@ -33,18 +33,61 @@ h1 {
 }
 
 ul {
-  list-style-position: inside;
-  padding-left: 0;
+  padding-left: 20px;
 }
 
 li {
   margin: 8px 0;
   color: #333;
-  font-size: 18px;
+  font-size: 17px;
+}
+
+label {
+  display: block;
+  margin: 12px 0;
+  font-weight: bold;
+}
+
+select {
+  margin-left: 8px;
+  padding: 6px;
+}
+
+button {
+  margin-top: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border: 1px solid #222;
+  background: #222;
+  color: white;
+  border-radius: 6px;
+}
+
+button:hover {
+  background: #444;
+}
+
+.checkbox-row {
+  font-weight: normal;
+}
+
+.checkbox-row input {
+  margin-right: 8px;
+}
+
+.cart-item {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
 }
 
 .error {
   color: darkred;
   font-weight: bold;
   text-align: center;
+}
+
+.note {
+  font-size: 14px;
+  color: #666;
 }
